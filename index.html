@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>RANK — Daily Execution</title>
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#121212">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { sans: ['Rubik', 'sans-serif'] } } }
+  };
+</script>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="font-sans">
+
+  <div id="app" class="h-screen w-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-3 shrink-0">
+      <div>
+        <h1 class="text-2xl font-black tracking-tight text-[var(--text-primary)]">RANK<span style="color:var(--brand)">.</span></h1>
+        <p id="todayLabel" class="text-xs text-[var(--text-secondary)] mt-0.5"></p>
+      </div>
+      <button id="openVaultBtn" class="icon-btn-ghost" aria-label="Open vault">
+        <i class="fa-solid fa-box-archive"></i>
+      </button>
+    </header>
+
+    <!-- Daily View -->
+    <main class="flex-1 flex flex-col px-3 pb-3 overflow-hidden">
+      <div id="taskList" class="scroll-thin flex-1 flex flex-col gap-2.5 overflow-y-auto"></div>
+      <div id="emptyState" class="hidden flex-1 flex-col items-center justify-center text-center gap-3 text-[var(--text-tertiary)]">
+        <i class="fa-regular fa-circle-check text-4xl"></i>
+        <p class="text-sm leading-relaxed">Nothing ranked for today.<br>Add a task to get moving.</p>
+      </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="shrink-0 pb-[calc(env(safe-area-inset-bottom,0px)+10px)] pt-2 px-8 flex items-center justify-between bg-[var(--bg-base)] border-t border-[var(--border-subtle)]">
+      <button class="nav-btn active" id="navToday"><i class="fa-solid fa-calendar-day"></i><span>Today</span></button>
+      <button id="fabAdd" class="fab" aria-label="Add task"><i class="fa-solid fa-plus"></i></button>
+      <button class="nav-btn" id="navVault"><i class="fa-solid fa-layer-group"></i><span>Vault</span></button>
+    </nav>
+  </div>
+
+  <!-- Vault (Scheduled / Completed) -->
+  <section id="vaultView" class="view hidden fixed inset-0 z-30 bg-[var(--bg-base)]">
+    <header class="flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-2 shrink-0">
+      <button id="closeVaultBtn" class="icon-btn-ghost" aria-label="Back to today"><i class="fa-solid fa-arrow-left"></i></button>
+      <h2 class="text-xl font-black text-[var(--text-primary)]">Vault</h2>
+    </header>
+
+    <div class="flex gap-2 px-4 py-3 shrink-0">
+      <button class="vault-tab active" data-tab="bank">Scheduled</button>
+      <button class="vault-tab" data-tab="archive">Completed</button>
+    </div>
+
+    <div id="bankList" class="scroll-thin flex-1 overflow-y-auto px-3 pb-6 flex flex-col gap-2"></div>
+    <div id="archiveList" class="scroll-thin flex-1 overflow-y-auto px-3 pb-6 hidden flex-col gap-2"></div>
+  </section>
+
+  <!-- Add Task Modal -->
+  <div id="addModal" class="modal hidden fixed inset-0 z-40">
+    <div id="modalBackdrop" class="absolute inset-0"></div>
+    <form id="taskForm" class="scroll-thin relative w-full sm:max-w-md mx-auto bg-[var(--bg-elevated-2)] rounded-t-3xl sm:rounded-3xl sm:mt-10 sm:mb-10 p-5 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] flex flex-col gap-5 max-h-[88vh] overflow-y-auto">
+
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-[var(--text-primary)]">New task</h2>
+        <button type="button" id="closeModalBtn" class="icon-btn-ghost" style="width:32px;height:32px;" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="field">
+        <label for="titleInput" class="field-label">Task name</label>
+        <input id="titleInput" type="text" dir="auto" required maxlength="80" placeholder="e.g. Train legs" class="field-input">
+      </div>
+
+      <div class="field">
+        <label class="field-label">Color</label>
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div id="colorSwatches" class="flex items-center gap-2.5 flex-wrap"></div>
+          <button type="button" id="customColorTrigger" class="color-swatch custom-swatch" title="Custom color" aria-label="Custom color">
+            <i class="fa-solid fa-eye-dropper"></i>
+          </button>
+          <input type="color" id="customColorInput" value="#22D3EE" class="hidden">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="field">
+          <label for="dateInput" class="field-label">Date</label>
+          <input id="dateInput" type="date" required class="field-input">
+        </div>
+        <div class="field">
+          <label for="rankInput" class="field-label">Rank</label>
+          <input id="rankInput" type="number" min="1" required class="field-input">
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="flex items-center justify-between mb-2">
+          <label for="quantityInput" class="field-label mb-0">Quantity</label>
+          <label class="switch">
+            <input type="checkbox" id="infinityToggle">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="text-xs text-[var(--text-secondary)] ml-2">Everyday</span>
+          </label>
+        </div>
+        <input id="quantityInput" type="number" min="1" value="1" class="field-input">
+      </div>
+
+      <button type="submit" id="submitTaskBtn" class="submit-btn">Save task</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
